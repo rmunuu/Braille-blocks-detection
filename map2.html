@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Tmap</title>
+    <style>
+        #map_div {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+</head>
+<body>
+    <div id="map_div"></div>
+    <script>
+        function loadScript(url, callback) {
+            var script = document.createElement("script");
+            script.type = "text/javascript";
+            script.src = url;
+            script.onload = callback;
+            document.head.appendChild(script);
+        }
+
+        function initTmap() {
+            var map = new Tmapv2.Map("map_div", {
+                center: new Tmapv2.LatLng(37.5665, 126.9780),
+                width: "100%",
+                height: "500px",
+                zoom: 12
+            });
+
+            var startMarker, endMarker;
+            var clickCount = 0;
+            var startPoint, endPoint;
+            var drawInfoArr = [];
+            var resultdrawArr = [];
+
+            function onMapClick(event) {
+                var latLng = event.latLng;
+                clickCount++;
+
+                if (clickCount === 1) {
+                    if (startMarker) {
+                        startMarker.setMap(null);
+                    }
+                    startMarker = new Tmapv2.Marker({
+                        position: latLng,
+                        map: map,
+                        iconSize: new Tmapv2.Size(24, 38),
+                    });
+                    startPoint = latLng;
+                } else if (clickCount === 2) {
+                    if (endMarker) {
+                        endMarker.setMap(null);
+                    }
+                    endMarker = new Tmapv2.Marker({
+                        position: latLng,
+                        map: map,
+                        iconSize: new Tmapv2.Size(24, 38),
+                    });
+                    endPoint = latLng;
+
+                    findRoute();
+                }
+            }
+
+            function findRoute() {
+                var headers = {
+                    "appKey": "SieXPHlrFV2F1jetnSDKKqLHdq2f9F18LLLjFhyg"
+                };
+
+                var startX = startPoint.lng();
+                var startY = startPoint.lat();
+                var endX = endPoint.lng();
+                var endY = endPoint.lat();
+
+                var url = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json";
+
+                var params = {
+                    startX: startX,
+                    startY: startY,
+                    endX: endX,
+                    endY: endY,
+                    reqCoordType: "WGS84GEO",
+                    resCoordType: "EPSG3857",
+                    startName: "출발지",
+                    endName: "도착지"
+                };
+
+                $.ajax({
+                    method: "POST",
+                    headers: headers,
+                    url: url,
+                    data: params,
+                    success: function (response) {
+                        var resultData = response.features;
+                        drawInfoArr = [];
+
+                        for (var i in resultData) {
+                            var geometry = resultData[i].geometry;
+
+                            if (geometry.type === "LineString") {
+                                for (var j in geometry.coordinates) {
+                                    var latlng = new Tmapv2.Point(
+                                        geometry.coordinates[j][0],
+                                        geometry.coordinates[j][1]
+                                    );
+
+                                    var convertPoint = new Tmapv2.Projection.convertEPSG3857ToWGS84GEO(
+                                        latlng
+                                    );
+
+                                    var convertChange = new Tmapv2.LatLng(
+                                        convertPoint._lat,
+                                        convertPoint._lng
+                                    );
+
+                                    drawInfoArr.push(convertChange);
+                                }
+                            }
+                        }
+
+                        drawLine(drawInfoArr);
+                    },
+                    error: function (request, status, error) {
+                        console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+                    }
+                });
+            }
+
+            function drawLine(arrPoint) {
+                var polyline_ = new Tmapv2.Polyline({
+                    path: arrPoint,
+                    strokeColor: "#DD0000",
+                    strokeWeight: 6,
+                    map: map
+                });
+
+                resultdrawArr.push(polyline_);
+            }
+
+            map.addListener("click", onMapClick);
+        }
+
+        // Load the Tmap script dynamically and then initialize the map
+        loadScript("https://apis.openapi.sk.com/tmap/jsv2?version=2&format=javascript&appKey=SieXPHlrFV2F1jetnSDKKqLHdq2f9F18LLLjFhyg", initTmap);
+    </script>
+</body>
+</html>
