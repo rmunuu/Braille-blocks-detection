@@ -1,0 +1,12 @@
+#map {
+    width: 50%;
+    height: 100vh;
+    float: left;
+}
+
+#camera {
+    width: 50%;
+    height: 100vh;
+    float: left;
+    object-fit: cover;
+}
